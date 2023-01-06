@@ -203,7 +203,7 @@ interface MarkChatItemAsDeletedAction {
     targetItemId: string;
 }
 
-interface LiveStreamabilityRenderer {
+export interface LiveStreamabilityRenderer {
     offlineSlate: {
         liveStreamOfflineSlateRenderer: {
             scheduledStartTime: string;
@@ -219,7 +219,7 @@ interface SubMenuItem {
     }
 }
 
-interface ViewSelector {
+export interface ViewSelector {
     sortFilterSubMenuRenderer: {
         subMenuItems: SubMenuItem[];
     }

@@ -33,7 +33,7 @@ export interface Badge {
     label: string;
 }
 
-interface BaseChatItem {
+export interface BaseChatItem {
     id: string;
     author: ChatAuthor;
     memberBadge?: Badge;
@@ -43,12 +43,12 @@ interface BaseChatItem {
     timestamp: Date;
 }
 
-interface DonationDetails {
+export interface DonationDetails {
     color: `#${string}`;
     amount: string;
 }
 
-interface MessageBasedChatItem {
+export interface MessageBasedChatItem {
     message: MessageItem[];
 }
 
