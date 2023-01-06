@@ -1,6 +1,6 @@
 {
   "name": "@eslym/youtube-utilities",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Some utilities to crawl youtube data",
   "main": "dist/index.js",
   "repository": "https://github.com/eslym/youtube-utilities",
