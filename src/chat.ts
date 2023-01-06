@@ -228,6 +228,8 @@ type ChatFetcherEvents = {
     delete: (id: string) => void;
     stop: (reason?: string) => void;
     error: (error: Error) => void;
+
+    state: (state: ChatFetcherState) => void;
 }
 
 const StateSchema = z.object({
@@ -321,8 +323,10 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
             let continuationData = res.continuationContents.liveChatContinuation.continuations[0];
             if (continuationData.invalidationContinuationData) {
                 this.#continuation = continuationData.invalidationContinuationData.continuation;
+                this.emit('state', this.state);
             } else if (continuationData.timedContinuationData) {
                 this.#continuation = continuationData.timedContinuationData.continuation;
+                this.emit('state', this.state);
             } else {
                 this.emit('error', new ChatFetchingError('Continuation not found.'));
                 this.stop('error');
