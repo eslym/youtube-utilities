@@ -17,4 +17,5 @@ export type {
     EmojiItem,
     DonationDetails
 } from './types/data';
+export {sleep, makeState, simpleMessage} from './util';
 export {ChatFetcher, ChatFetcherState} from './chat';
