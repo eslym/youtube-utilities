@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, {AxiosAdapter} from "axios";
 
 export const client = axios.create({
     headers: {
@@ -9,3 +9,9 @@ export const client = axios.create({
     },
     timeout: 5000
 });
+
+type SingleOrMulti<T> = T | T[];
+
+export function setAxiosAdapter(adapter: SingleOrMulti<AxiosAdapter | string>){
+    client.defaults.adapter = adapter;
+}

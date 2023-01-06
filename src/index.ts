@@ -19,3 +19,4 @@ export type {
 } from './types/data';
 export {sleep, makeState, simpleMessage} from './util';
 export {ChatFetcher, ChatFetcherState} from './chat';
+export {setAxiosAdapter} from './client';
