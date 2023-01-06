@@ -48,7 +48,7 @@ export interface DonationDetails {
     amount: string;
 }
 
-export interface MessageBasedChatItem {
+export interface MessageBasedChatItem extends BaseChatItem {
     message: MessageItem[];
 }
 
