@@ -226,7 +226,7 @@ type ChatFetcherEvents = {
     start: () => void;
     chat: (item: ChatItem) => void;
     delete: (id: string) => void;
-    stop: (reason: string) => void;
+    stop: (reason?: string) => void;
     error: (error: Error) => void;
 }
 
@@ -238,6 +238,9 @@ const StateSchema = z.object({
 
 export type ChatFetcherState = z.infer<typeof StateSchema>;
 
+/**
+ * Class to fetch youtube chat from public livestream.
+ */
 export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<ChatFetcherEvents>) {
     readonly #apiKey: string;
     readonly #clientVersion: string;
@@ -249,6 +252,9 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
 
     interval: number;
 
+    /**
+     * The current state of fetcher
+     */
     get state(): Readonly<ChatFetcherState> {
         return Object.freeze({
             apiKey: this.#apiKey,
@@ -266,13 +272,20 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
         this.interval = interval;
     }
 
+    /**
+     * Start the fetching process
+     */
     start(): boolean {
         if (this.#timeout) return false;
         this.#timeout = setTimeout(this.#cycle.bind(this), 0);
         return true;
     }
 
-    stop(reason: string): boolean {
+    /**
+     * Stop the fetching process
+     * @param reason
+     */
+    stop(reason?: string): boolean {
         if (!this.#timeout) return false;
         clearTimeout(this.#timeout);
         this.emit('stop', reason);

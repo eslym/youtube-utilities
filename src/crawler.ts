@@ -50,8 +50,22 @@ const allowedHosts: Readonly<Record<string, boolean>> = Object.freeze({
     'youtu.be': true,
 });
 
+/**
+ * Fetch and extract metadata from channel url
+ * @param url
+ */
 export function crawl(url: ChannelURL): Promise<ProfileCrawlResult>;
+
+/**
+ * Fetch and extract metadata from video url
+ * @param url
+ */
 export function crawl(url: VideoURL): Promise<VideoCrawlResult>;
+
+/**
+ * Try to fetch and extract metadata from a youtube url
+ * @param url
+ */
 export function crawl(url: string): Promise<CrawlResult>;
 export async function crawl(url: string): Promise<CrawlResult> {
     let uri = new URL(url);
