@@ -41,6 +41,10 @@ export interface Continuation {
 export interface Action {
     markChatItemAsDeletedAction?: MarkChatItemAsDeletedAction
 
+    removeChatItemAction?: {
+        targetItemId: string;
+    }
+
     addChatItemAction?: AddChatItemAction
     addLiveChatTickerItemAction?: object
 }

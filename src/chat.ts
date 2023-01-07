@@ -139,10 +139,11 @@ function buildBase<T extends keyof TYPE_MAP>(type: T, renderer: MessageRendererB
 }
 
 function convertAction(action: Action): ChatItem | DeleteChatItem | null {
-    if (action.markChatItemAsDeletedAction) {
+    if (action.markChatItemAsDeletedAction || action.removeChatItemAction) {
+        let record = (action.markChatItemAsDeletedAction ?? action.removeChatItemAction) as {targetItemId: string};
         return {
             type: 'delete',
-            id: action.markChatItemAsDeletedAction.targetItemId
+            id: record.targetItemId
         }
     }
 
