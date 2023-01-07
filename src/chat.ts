@@ -230,6 +230,10 @@ type ChatFetcherEvents = {
     error: (error: Error) => void;
 
     state: (state: ChatFetcherState) => void;
+
+    unknown: (action: object) => void;
+
+    raw: (action: object) => void;
 }
 
 const StateSchema = z.object({
@@ -239,6 +243,11 @@ const StateSchema = z.object({
 })
 
 export type ChatFetcherState = z.infer<typeof StateSchema>;
+
+export type ChatFetcherOptions = {
+    interval?: number;
+    debug?: boolean;
+};
 
 /**
  * Class to fetch youtube chat from public livestream.
@@ -254,6 +263,8 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
 
     interval: number;
 
+    debug: boolean;
+
     /**
      * The current state of fetcher
      */
@@ -265,13 +276,23 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
         });
     }
 
-    constructor(state: ChatFetcherState, interval = 1000) {
+    constructor(state: ChatFetcherState);
+    constructor(state: ChatFetcherState, interval: number);
+    constructor(state: ChatFetcherState, options: ChatFetcherOptions);
+    constructor(state: ChatFetcherState, options: number | ChatFetcherOptions | undefined = undefined) {
         super();
         StateSchema.parse(state);
         this.#apiKey = state.apiKey;
         this.#clientVersion = state.clientVersion;
         this.#continuation = state.continuation;
-        this.interval = interval;
+        if (typeof options === 'number') {
+            options = {
+                interval: options,
+                debug: false,
+            };
+        }
+        this.interval = options?.interval ?? 1000;
+        this.debug = options?.debug ?? false;
     }
 
     /**
@@ -305,9 +326,17 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
 
             if (res.continuationContents.liveChatContinuation.actions) {
                 for (let action of res.continuationContents.liveChatContinuation.actions) {
+                    if (this.debug) {
+                        this.emit('raw', JSON.parse(JSON.stringify(action)));
+                    }
                     try {
                         let item = convertAction(action);
-                        if (!item) continue;
+                        if (!item) {
+                            if (this.debug) {
+                                this.emit('unknown', action);
+                            }
+                            continue;
+                        }
                         if (item.type === 'delete') {
                             this.emit('delete', item.id);
                             continue;
