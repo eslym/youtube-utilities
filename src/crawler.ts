@@ -4,7 +4,7 @@ import {AxiosError} from "axios";
 import {extractObject, extractString} from "./util";
 import {ChannelMetadataSchema, VideoDetailsSchema} from "./schema/youtube";
 import {client} from "./client";
-import getMetaData from "metadata-scraper";
+import {JSDOM} from 'jsdom';
 
 export type CrawlResult = ProfileCrawlResult | VideoCrawlResult;
 
@@ -74,7 +74,7 @@ export async function crawl(url: string): Promise<CrawlResult> {
     }
     try {
         let res = await client.get(url);
-        let meta = await getMetaData({html: res.data});
+        let meta = getMetaData(res.data);
         if (meta.type === 'profile') {
             return extractProfile(res.data);
         }
@@ -102,7 +102,7 @@ function extractProfile(source: string): ProfileCrawlResult {
 
 function extractVideo(source: string): VideoCrawlResult {
     let details = extractVideoDetails(source);
-    if(!details){
+    if (!details) {
         throw new Error();
     }
     let result: VideoCrawlResult = {
@@ -110,26 +110,26 @@ function extractVideo(source: string): VideoCrawlResult {
         details
     };
     let findString = extractString(":", source, source.indexOf("INNERTUBE_API_KEY"));
-    if(findString){
+    if (findString) {
         result.apiKey = findString.result;
     }
     findString = extractString(":", source, source.indexOf("clientVersion"));
-    if(findString){
+    if (findString) {
         result.clientVersion = findString.result;
     }
     let findLive = extractObject<LiveStreamabilityRenderer>("liveStreamabilityRenderer", source);
-    if(findLive){
+    if (findLive) {
         result.liveAbility = {
             continuations: [],
         };
         let streamAbility = findLive.result;
-        if(streamAbility.offlineSlate){
+        if (streamAbility.offlineSlate) {
             result.liveAbility.schedule = new Date(
                 Number.parseInt(streamAbility.offlineSlate.liveStreamOfflineSlateRenderer.scheduledStartTime) * 1000
             );
         }
         let findViewSelector = extractObject<ViewSelector>("viewSelector", source);
-        if(findViewSelector){
+        if (findViewSelector) {
             result.liveAbility.continuations = findViewSelector.result.sortFilterSubMenuRenderer.subMenuItems.map(
                 i => i.continuation.reloadContinuationData.continuation
             );
@@ -140,11 +140,18 @@ function extractVideo(source: string): VideoCrawlResult {
 
 function extractVideoDetails(source: string): VideoDetails | null {
     let details = extractObject<VideoDetails>("videoDetails", source);
-    while(details){
-        if(VideoDetailsSchema.safeParse(details.result)){
+    while (details) {
+        if (VideoDetailsSchema.safeParse(details.result)) {
             return details.result;
         }
         details = extractObject("videoDetails", source, details.range[1]);
     }
     return null;
+}
+
+function getMetaData(source: string): { type?: string, url?: string } {
+    let {window} = new JSDOM(source);
+    let url = window.document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.content;
+    let type = window.document.querySelector<HTMLMetaElement>('meta[property="og:type"]')?.content;
+    return {type, url};
 }
