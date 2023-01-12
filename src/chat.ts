@@ -16,7 +16,7 @@ import {
     SuperStickerItem
 } from "./types/data";
 import {EventEmitter} from 'events';
-import TypedEmitter from "typed-emitter/rxjs";
+import type TypedEmitter from "typed-emitter";
 import {z} from "zod";
 import {AxiosError} from "axios";
 import {ChatFetchingError, FetchError, ParseError} from "./errors";
