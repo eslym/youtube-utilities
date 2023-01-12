@@ -376,7 +376,7 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
 
             if ((('code' in err && err.code === 'ECONNABORTED') || (err instanceof AxiosError && err.response?.status === 503)) && this.#attempts < this.#retry) {
                 this.#attempts++;
-                this.#timeout = setTimeout(this.#cycle.bind(this), this.interval * this.#attempts);
+                this.#timeout = setTimeout(this.#cycle.bind(this), this.interval * Math.min(this.#attempts, 5));
                 return;
             }
 
