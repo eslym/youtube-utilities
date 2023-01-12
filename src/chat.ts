@@ -140,7 +140,7 @@ function buildBase<T extends keyof TYPE_MAP>(type: T, renderer: MessageRendererB
 
 function convertAction(action: Action): ChatItem | DeleteChatItem | null {
     if (action.markChatItemAsDeletedAction || action.removeChatItemAction) {
-        let record = (action.markChatItemAsDeletedAction ?? action.removeChatItemAction) as {targetItemId: string};
+        let record = (action.markChatItemAsDeletedAction ?? action.removeChatItemAction) as { targetItemId: string };
         return {
             type: 'delete',
             id: record.targetItemId
@@ -248,6 +248,7 @@ export type ChatFetcherState = z.infer<typeof StateSchema>;
 export type ChatFetcherOptions = {
     interval?: number;
     debug?: boolean;
+    retry?: number;
 };
 
 /**
@@ -261,6 +262,8 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
     #timeout?: NodeJS.Timeout = undefined;
 
     #attempts: number = 0;
+
+    #retry: number;
 
     interval: number;
 
@@ -289,11 +292,11 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
         if (typeof options === 'number') {
             options = {
                 interval: options,
-                debug: false,
             };
         }
         this.interval = options?.interval ?? 1000;
         this.debug = options?.debug ?? false;
+        this.#retry = options?.retry ?? 5;
     }
 
     /**
@@ -371,7 +374,7 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
                 return;
             }
 
-            if ((('code' in err && err.code === 'ECONNABORTED') || (err instanceof AxiosError && err.response?.status === 503)) && this.#attempts < 5) {
+            if ((('code' in err && err.code === 'ECONNABORTED') || (err instanceof AxiosError && err.response?.status === 503)) && this.#attempts < this.#retry) {
                 this.#attempts++;
                 this.#timeout = setTimeout(this.#cycle.bind(this), this.interval * this.#attempts);
                 return;
