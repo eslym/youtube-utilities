@@ -21,7 +21,7 @@ import {z} from "zod";
 import {AxiosError} from "axios";
 import {ChatFetchingError, FetchError, ParseError} from "./errors";
 
-async function fetchChat(apiKey: string, continuation: string, clientVersion: string): Promise<GetLiveChatResponse> {
+async function fetchChat(apiKey: string, continuation: string, clientVersion: string, abort: AbortController): Promise<GetLiveChatResponse> {
     let url = `https://www.youtube.com/youtubei/v1/live_chat/get_live_chat`
     let res = await client.post(url, {
         context: {
@@ -31,7 +31,10 @@ async function fetchChat(apiKey: string, continuation: string, clientVersion: st
             },
         },
         continuation: continuation,
-    }, {params: {key: apiKey}});
+    }, {
+        params: {key: apiKey},
+        signal: abort.signal
+    });
 
     return res.data;
 }
@@ -265,6 +268,8 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
 
     #retry: number;
 
+    #abort: AbortController;
+
     interval: number;
 
     debug: boolean;
@@ -297,6 +302,7 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
         this.interval = options?.interval ?? 1000;
         this.debug = options?.debug ?? false;
         this.#retry = options?.retry ?? 5;
+        this.#abort = new AbortController();
     }
 
     /**
@@ -316,12 +322,13 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
         if (!this.#timeout) return false;
         clearTimeout(this.#timeout);
         this.emit('stop', reason);
+        this.#abort.abort();
         return true;
     }
 
     async #cycle() {
         try {
-            let res = await fetchChat(this.#apiKey, this.#continuation, this.#clientVersion);
+            let res = await fetchChat(this.#apiKey, this.#continuation, this.#clientVersion, this.#abort);
 
             if (!res.continuationContents?.liveChatContinuation) {
                 this.stop('ended');
@@ -368,6 +375,7 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
 
             this.#timeout = setTimeout(this.#cycle.bind(this), this.interval);
         } catch (err) {
+            if (!this.#timeout) return;
             if (!(err instanceof Error)) {
                 this.emit('error', new Error('Unknown Error'));
                 this.stop('error');
