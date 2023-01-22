@@ -4,9 +4,6 @@
  * @see https://github.com/LinaTsukusu/youtube-chat/blob/develop/src/types/yt-response.ts
  * */
 
-import {z} from "zod";
-import {ChannelMetadataSchema, ThumbnailSchema, VideoDetailsSchema} from "../schema/youtube";
-
 /** get_live_chat Response */
 export interface GetLiveChatResponse {
     responseContext: object
@@ -49,7 +46,11 @@ export interface Action {
     addLiveChatTickerItemAction?: object
 }
 
-export type Thumbnail = z.infer<typeof ThumbnailSchema>;
+export interface Thumbnail {
+    url: string;
+    width?: number;
+    height?: number;
+}
 
 export interface MessageText {
     text: string
@@ -215,6 +216,34 @@ export interface LiveStreamabilityRenderer {
     }
 }
 
+export interface YTInitialPlayerResponse {
+    playabilityStatus: {
+        liveStreamability?: {
+            liveStreamabilityRenderer: LiveStreamabilityRenderer
+        }
+    }
+    videoDetails: VideoDetails;
+}
+
+export interface YTInitialData {
+    contents: {
+        twoColumnWatchNextResults: {
+            conversationBar?: {
+                liveChatRenderer?: {
+                    header: {
+                        liveChatHeaderRenderer: {
+                            viewSelector: ViewSelector;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    metadata?: {
+        channelMetadataRenderer: ChannelMetadata
+    }
+}
+
 interface SubMenuItem {
     continuation: {
         reloadContinuationData: {
@@ -229,6 +258,46 @@ export interface ViewSelector {
     }
 }
 
-export type VideoDetails = z.infer<typeof VideoDetailsSchema>;
+export interface VideoDetails {
+    videoId: string;
+    title: string;
+    lengthSeconds: string;
+    isLive?: boolean;
+    keywords?: string[];
+    channelId: string;
+    isOwnerViewing: boolean;
+    shortDescription: string;
+    isCrawlable: boolean;
+    isLiveDvrEnabled?: boolean;
+    thumbnail: {
+        thumbnails: Thumbnail[];
+    };
+    liveChunkReadahead?: number;
+    allowRatings: boolean;
+    viewCount: string;
+    author: string;
+    isLowLatencyLiveStream: boolean;
+    isPrivate: boolean;
+    isUnpluggedCorpus: boolean;
+    latencyClass: string;
+    isLiveContent: boolean;
+}
 
-export type ChannelMetadata = z.infer<typeof ChannelMetadataSchema>;
+export interface ChannelMetadata {
+    title: string;
+    description: string;
+    rssUrl: string;
+    externalId: string;
+    keywords: string;
+    ownerUrls: string[];
+    avatar: {
+        thumbnails: Thumbnail[];
+    };
+    channelUrl: string;
+    isFamilySafe: boolean;
+    availableCountryCodes: string[];
+    androidDeepLink: string;
+    androidAppindexingLink: string;
+    iosAppindexingLink: string;
+    vanityChannelUrl: string;
+}

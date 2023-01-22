@@ -17,7 +17,6 @@ import {
 } from "./types/data";
 import {EventEmitter} from 'events';
 import type TypedEmitter from "typed-emitter";
-import {z} from "zod";
 import {AxiosError} from "axios";
 import {ChatFetchingError, FetchError, ParseError} from "./errors";
 
@@ -240,13 +239,11 @@ type ChatFetcherEvents = {
     raw: (action: object) => void;
 }
 
-const StateSchema = z.object({
-    apiKey: z.string(),
-    clientVersion: z.string(),
-    continuation: z.string()
-})
-
-export type ChatFetcherState = z.infer<typeof StateSchema>;
+export type ChatFetcherState = {
+    apiKey: string,
+    clientVersion: string,
+    continuation: string
+};
 
 export type ChatFetcherOptions = {
     interval?: number;
@@ -290,7 +287,6 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
     constructor(state: ChatFetcherState, options: ChatFetcherOptions);
     constructor(state: ChatFetcherState, options: number | ChatFetcherOptions | undefined = undefined) {
         super();
-        StateSchema.parse(state);
         this.#apiKey = state.apiKey;
         this.#clientVersion = state.clientVersion;
         this.#continuation = state.continuation;

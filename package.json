@@ -1,6 +1,6 @@
 {
   "name": "@eslym/youtube-utilities",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Some utilities to crawl youtube data",
   "main": "dist/index.js",
   "repository": "https://github.com/eslym/youtube-utilities",
@@ -20,8 +20,7 @@
     "axios": "^1.2.2",
     "jsdom": "^21.0.0",
     "json5": "^2.2.3",
-    "typed-emitter": "^2.1.0",
-    "zod": "^3.20.2"
+    "typed-emitter": "^2.1.0"
   },
   "files": [
     "./dist/"

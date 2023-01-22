@@ -3,8 +3,6 @@ import {ChatFetcherState} from './chat';
 import {MessageItem} from "./types/data";
 import {VideoCrawlResult} from "./crawler";
 import {BuildStateError} from "./errors";
-import {z} from "zod";
-import {VideoDetailsSchema} from "./schema/youtube";
 
 const quotes: Readonly<Record<string, boolean>> = Object.freeze({"'": true, '"': true});
 
@@ -29,10 +27,7 @@ export function locateString(source: string, index: number = 0): StringRange | n
     let quote = source[index];
     let escape = false;
     while ((++index) < source.length && (escape || source[index] !== quote)) {
-        escape = false;
-        if (source[index] === '\\') {
-            escape = true;
-        }
+        escape = source[index] === '\\';
     }
     if (!escape && source[index] === quote) {
         return [start, index + 1];
@@ -90,41 +85,7 @@ export function extractObject<T extends object>(keyword: string, source: string,
     return null;
 }
 
-export function extractString(keyword: string, source: string, index: number = 0): ExtractResult<string> | null {
-    index = source.indexOf(keyword, index);
-    if (index < 0) {
-        return null;
-    }
-    let loc = locateString(source, index);
-    if (!loc) {
-        return null;
-    }
-    try {
-        let json = source.slice(...loc);
-        return {
-            range: loc,
-            result: JSON5.parse(json),
-        }
-    } catch (e) {
-    }
-    return null;
-}
-
-const VideoCrawlResultSchema = z.object({
-    type: z.literal('video'),
-    details: VideoDetailsSchema,
-    apiKey: z.string().optional(),
-    clientVersion: z.string().optional(),
-    liveAbility: z.object({
-        scheduled: z.date().optional(),
-        continuations: z.array(z.string()),
-    }).optional(),
-});
-
-export function makeState(crawlResult: VideoCrawlResult): ChatFetcherState {
-    if (!VideoCrawlResultSchema.safeParse(crawlResult).success) {
-        throw new BuildStateError('Not a valid crawl result.');
-    }
+export function makeState(crawlResult: Omit<VideoCrawlResult, 'details'>): ChatFetcherState {
     if (!crawlResult.apiKey) {
         throw new BuildStateError('API Key is missing.');
     }

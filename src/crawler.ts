@@ -1,10 +1,13 @@
-import type {ChannelMetadata, LiveStreamabilityRenderer, VideoDetails, ViewSelector} from "./types/youtube";
+import type {
+    ChannelMetadata,
+    VideoDetails, YTInitialData,
+    YTInitialPlayerResponse
+} from "./types/youtube";
 import {FetchError, InvalidURLError, UnsupportedPageError} from "./errors";
 import {AxiosError} from "axios";
-import {extractObject, extractString} from "./util";
-import {ChannelMetadataSchema, VideoDetailsSchema} from "./schema/youtube";
+import {extractObject} from "./util";
 import {client} from "./client";
-import {JSDOM} from 'jsdom';
+import {DOMWindow, JSDOM} from 'jsdom';
 
 export type CrawlResult = ProfileCrawlResult | VideoCrawlResult;
 
@@ -73,13 +76,14 @@ export async function crawl(url: string): Promise<CrawlResult> {
         throw new InvalidURLError('Not youtube link!');
     }
     try {
-        let res = await client.get(url);
-        let meta = getMetaData(res.data);
+        let res = await client.get<string>(url);
+        let {window} = new JSDOM(res.data);
+        let meta = getMetaData(window);
         if (meta.type === 'profile') {
-            return extractProfile(res.data);
+            return extractProfile(window);
         }
         if (meta.type === 'video.other' || (meta.url && meta.url.startsWith('https://www.youtube.com/watch?v='))) {
-            return extractVideo(res.data);
+            return extractVideo(window);
         }
     } catch (e) {
         if (e instanceof AxiosError) {
@@ -89,48 +93,65 @@ export async function crawl(url: string): Promise<CrawlResult> {
     throw new UnsupportedPageError(`Unsupported page: ${url}`);
 }
 
-function extractProfile(source: string): ProfileCrawlResult {
-    let metadata = extractObject<ChannelMetadata>("channelMetadataRenderer", source);
-    if (metadata && ChannelMetadataSchema.safeParse(metadata.result).success) {
-        return {
-            type: 'profile',
-            metadata: metadata.result,
+function extractProfile(window: DOMWindow): ProfileCrawlResult {
+    let scriptBlocks = window.document.getElementsByTagName('script');
+    for (let script of scriptBlocks) {
+        if (script.innerHTML.match(/^\s*var\s+ytInitialData\s*=/)) {
+            let initialData = extractObject<YTInitialData>("=", script.innerHTML);
+            if (initialData && initialData.result.metadata) {
+                return {
+                    type: 'profile',
+                    metadata: initialData.result.metadata.channelMetadataRenderer,
+                };
+            }
         }
     }
     throw new Error();
 }
 
-function extractVideo(source: string): VideoCrawlResult {
-    let details = extractVideoDetails(source);
-    if (!details) {
+function extractVideo(window: DOMWindow): VideoCrawlResult {
+    let scriptBlocks = window.document.getElementsByTagName('script');
+    let ytInitialPlayerResponse: YTInitialPlayerResponse | undefined = undefined;
+    let ytInitialData: YTInitialData | undefined = undefined;
+    let ytcfg: Record<string, any> = {};
+    for (let script of scriptBlocks) {
+        if (script.innerHTML.match(/^\s*var\s+ytInitialPlayerResponse\s*=/)) {
+            ytInitialPlayerResponse = extractObject<YTInitialPlayerResponse>("=", script.innerHTML)?.result;
+            continue;
+        }
+        if (script.innerHTML.match(/^\s*var\s+ytInitialData\s*=/)) {
+            ytInitialData = extractObject<YTInitialData>("=", script.innerHTML)?.result;
+            continue;
+        }
+        let extract = extractObject<Record<string, any>>("ytcfg.set({", script.innerHTML);
+        if (extract) {
+            Object.assign(ytcfg, extract.result);
+        }
+    }
+    if (!ytInitialPlayerResponse) {
         throw new Error();
     }
     let result: VideoCrawlResult = {
         type: 'video',
-        details
+        details: ytInitialPlayerResponse.videoDetails,
     };
-    let findString = extractString(":", source, source.indexOf("INNERTUBE_API_KEY"));
-    if (findString) {
-        result.apiKey = findString.result;
+    if (ytcfg.INNERTUBE_API_KEY) {
+        result.apiKey = ytcfg.INNERTUBE_API_KEY;
     }
-    findString = extractString(":", source, source.indexOf("clientVersion"));
-    if (findString) {
-        result.clientVersion = findString.result;
+    if (ytcfg.INNERTUBE_CONTEXT) {
+        result.clientVersion = ytcfg.INNERTUBE_CONTEXT.client.clientVersion;
     }
-    let findLive = extractObject<LiveStreamabilityRenderer>("liveStreamabilityRenderer", source);
-    if (findLive) {
-        result.liveAbility = {
-            continuations: [],
-        };
-        let streamAbility = findLive.result;
+    if (ytInitialPlayerResponse.playabilityStatus.liveStreamability) {
+        result.liveAbility = {continuations: []};
+        let streamAbility = ytInitialPlayerResponse.playabilityStatus.liveStreamability.liveStreamabilityRenderer;
         if (streamAbility.offlineSlate) {
             result.liveAbility.schedule = new Date(
                 Number.parseInt(streamAbility.offlineSlate.liveStreamOfflineSlateRenderer.scheduledStartTime) * 1000
             );
         }
-        let findViewSelector = extractObject<ViewSelector>("viewSelector", source);
-        if (findViewSelector) {
-            result.liveAbility.continuations = findViewSelector.result.sortFilterSubMenuRenderer.subMenuItems.map(
+        if (ytInitialData?.contents.twoColumnWatchNextResults.conversationBar?.liveChatRenderer) {
+            let viewSelector = ytInitialData.contents.twoColumnWatchNextResults.conversationBar.liveChatRenderer.header.liveChatHeaderRenderer.viewSelector;
+            result.liveAbility.continuations = viewSelector.sortFilterSubMenuRenderer.subMenuItems.map(
                 i => i.continuation.reloadContinuationData.continuation
             );
         }
@@ -138,19 +159,7 @@ function extractVideo(source: string): VideoCrawlResult {
     return result;
 }
 
-function extractVideoDetails(source: string): VideoDetails | null {
-    let details = extractObject<VideoDetails>("videoDetails", source);
-    while (details) {
-        if (VideoDetailsSchema.safeParse(details.result)) {
-            return details.result;
-        }
-        details = extractObject("videoDetails", source, details.range[1]);
-    }
-    return null;
-}
-
-function getMetaData(source: string): { type?: string, url?: string } {
-    let {window} = new JSDOM(source);
+function getMetaData(window: DOMWindow): { type?: string, url?: string } {
     let url = window.document.querySelector<HTMLMetaElement>('meta[property="og:url"]')?.content;
     let type = window.document.querySelector<HTMLMetaElement>('meta[property="og:type"]')?.content;
     return {type, url};
