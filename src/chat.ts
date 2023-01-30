@@ -17,7 +17,7 @@ import {
 } from "./types/data";
 import {EventEmitter} from 'events';
 import type TypedEmitter from "typed-emitter";
-import {AxiosError} from "axios";
+import {AxiosError, CanceledError} from "axios";
 import {ChatFetchingError, FetchError, ParseError} from "./errors";
 
 async function fetchChat(apiKey: string, continuation: string, clientVersion: string, abort: AbortController): Promise<GetLiveChatResponse> {
@@ -317,6 +317,7 @@ export class ChatFetcher extends (EventEmitter as any as new () => TypedEmitter<
     stop(reason?: string): boolean {
         if (!this.#timeout) return false;
         clearTimeout(this.#timeout);
+        this.#timeout = undefined;
         this.emit('stop', reason);
         this.#abort.abort();
         return true;
